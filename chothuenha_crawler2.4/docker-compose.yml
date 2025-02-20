@@ -1,0 +1,60 @@
+version: '3.12'
+services:
+  mongodb:
+    image: mongo:4.4
+    container_name: mongo_ubuntu
+    ports:
+      - "27017:27017"
+    networks:
+      - app-network
+
+  scrapy:
+    build: .
+    container_name: chothuenha_crawapp
+    restart: "no"
+    depends_on:
+      - mongodb
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017
+    networks:
+      - app-network
+
+  pyspark:
+    build:
+      context: .
+      dockerfile: Dockerfile-pyspark
+    container_name: pyspark_app
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_URL=spark://pyspark:7077
+      - SPARK_APPLICATION_PYTHON_LOCATION=/app/pyspark_script.py
+      - SPARK_APPLICATION_ARGS=
+      - SPARK_EXTRA_CLASSPATH=/opt/bitnami/spark/jars/*
+    volumes:
+      - ./pyspark_script.py:/app/pyspark_script.py
+    depends_on:
+      - mongodb
+      - scrapy
+    restart: always
+    networks:
+      - app-network
+    ports:
+      - "4040:4040"
+    command: ["spark-submit", "--master", "local[*]", "--packages", "org.mongodb.spark:mongo-spark-connector_2.12:3.0.1,org.postgresql:postgresql:42.2.24", "/app/pyspark_script.py"]
+
+  postgres:
+    image: postgres:13
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: process_data
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    command: ["postgres", "-c", "listen_addresses=*"]
+
+networks:
+  app-network:
+    driver: bridge

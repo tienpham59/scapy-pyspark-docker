@@ -1,0 +1,11 @@
+psycopg2
+scrapy
+pymongo
+itemadapter
+findspark
+pyspark
+numpy
+pandas
+nltk
+scikit-learn
+sqlalchemy
